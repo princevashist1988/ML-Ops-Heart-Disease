@@ -26,7 +26,7 @@ with input-drift signals.
 ## 1. Quick start
 
 ```bash
-git clone <your-repo-url> heart-risk-mlops && cd heart-risk-mlops
+git clone https://github.com/princevashist1988/ML-Ops-Heart-Disease.git heart-risk-mlops && cd heart-risk-mlops
 python3.12 -m venv .venv && source .venv/bin/activate      # Python 3.11-3.13 work
 pip install -r requirements.txt                            # also installs this package (-e .)
 
@@ -183,7 +183,9 @@ Threshold effect on the hold-out set: at 0.50 → 2 missed cases, 5 false alarms
 cases, 11 false alarms. The CV estimate (0.90) is the figure to quote; 61 hold-out patients is a small sample.
 
 ## 10. Reproducibility notes
-Evidence in `screenshots/` was produced on a Linux sandbox with a local k3s cluster. That sandbox could not
-reach Docker Hub or the UCI host, so the image was built with `--build-arg BASE_IMAGE=<local Ubuntu 24.04 +
-Python 3.12 base>` and the Cleveland file came from the checksum-verified mirror (byte-identical to UCI). On a
-normal network the defaults (`python:3.12-slim`, UCI download) are used without any flag.
+The local evidence in `screenshots/` (MLflow, k3s, Prometheus, terminal runs) was produced on a Linux build
+machine with restricted internet access and a single-node k3s cluster. Docker Hub and the UCI host were not
+reachable from it, so the image was built with `--build-arg BASE_IMAGE=<local Ubuntu 24.04 + Python 3.12 base>`
+and the Cleveland file came from the checksum-verified mirror (byte-identical to the UCI file).
+The GitHub Actions run (`screenshots/github_actions_*.png`) uses the defaults - `python:3.12-slim` and the
+standard data download (UCI first, verified fallback) - with no overrides, and passes all five jobs.
