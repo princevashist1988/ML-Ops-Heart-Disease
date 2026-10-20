@@ -154,7 +154,7 @@ jobs:
         run: |
           mkdir -p logs
           docker run -d --name api -p 8000:8000 ${IMAGE}:1.0.0
-          scripts/smoke_test.sh http://localhost:8000 | tee logs/container_smoke_test.log
+          bash scripts/smoke_test.sh http://localhost:8000 | tee logs/container_smoke_test.log
           exit ${PIPESTATUS[0]}
       - name: Container health and logs
         if: always()
@@ -209,7 +209,7 @@ jobs:
           mkdir -p logs
           kubectl -n heart-risk port-forward svc/heart-risk-api 8000:8000 > /dev/null 2>&1 &
           sleep 3
-          scripts/smoke_test.sh http://localhost:8000 | tee logs/k8s_smoke_test.log
+          bash scripts/smoke_test.sh http://localhost:8000 | tee logs/k8s_smoke_test.log
           exit ${PIPESTATUS[0]}
       - name: Helm chart - lint, render and install alongside
         run: |
