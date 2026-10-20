@@ -1,0 +1,232 @@
+# CI/CD for the heart disease risk model.
+#
+#   lint ──> test ──> train ──> docker ──> deploy-kind
+#                                  └──> (main branch) push image to GHCR
+#
+# Every job fails fast on a non-zero exit (lint error, failing test, quality gate,
+# broken container, unhealthy rollout) and uploads its logs/reports as artifacts.
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.12"
+  IMAGE: heart-risk-api
+  MLFLOW_DISABLE_AGENT_HINT: "1"
+  PYTHONWARNINGS: ignore
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install ruff
+        run: pip install ruff==0.17.1 pyyaml==6.0.3
+      - name: Ruff lint (annotates the PR on failure)
+        run: ruff check src tests scripts --output-format=github
+      - name: Ruff format check
+        run: ruff format --check src tests scripts
+      - name: Validate workflow-adjacent configs
+        run: |
+          python -c "import yaml,glob; [list(yaml.safe_load_all(open(f))) for f in glob.glob('deploy/**/*.yaml', recursive=True) if '/templates/' not in f]; print('YAML OK')"
+
+  test:
+    name: Unit tests
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - name: Install dependencies from requirements.txt
+        run: pip install -r requirements.txt
+      - name: Data contract check on the committed clean dataset
+        run: python -c "from heartrisk.data import load_clean; df = load_clean(); print('data contract OK', df.shape)"
+      - name: Pytest with coverage
+        run: |
+          mkdir -p reports logs
+          pytest --cov --cov-report=term --cov-report=xml:reports/coverage.xml \
+                 --junitxml=reports/junit.xml 2>&1 | tee logs/pytest.log
+          exit ${PIPESTATUS[0]}
+      - name: Publish test summary
+        if: always()
+        run: python scripts/ci_summary.py tests reports/junit.xml reports/coverage.xml >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            reports/junit.xml
+            reports/coverage.xml
+            logs/pytest.log
+
+  train:
+    name: Train & track
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Acquire data (UCI, checksum-verified fallback)
+        run: |
+          mkdir -p logs
+          python -m heartrisk.data all 2>&1 | tee logs/data.log
+          exit ${PIPESTATUS[0]}
+      - name: EDA figures
+        run: python -m heartrisk.eda > logs/eda.log 2>&1
+      - name: Train, tune, log to MLflow and enforce quality gate
+        run: |
+          rm -rf mlflow.db mlartifacts models
+          python -m heartrisk.train 2>&1 | tee logs/train.log
+          exit ${PIPESTATUS[0]}
+      - name: Publish training summary
+        if: always()
+        run: python scripts/ci_summary.py training reports/metrics.json reports/model_comparison.csv >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload model artefacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: model
+          path: |
+            models/model.joblib
+            models/model_card.json
+            models/mlflow_model/
+      - name: Upload MLflow store, reports and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: training-run
+          path: |
+            mlflow.db
+            mlartifacts/
+            reports/
+            logs/
+
+  docker:
+    name: Build & smoke-test image
+    needs: train
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch the model trained in this run
+        uses: actions/download-artifact@v4
+        with:
+          name: model
+          path: models
+      - uses: docker/setup-buildx-action@v3
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: ${{ env.IMAGE }}:1.0.0,${{ env.IMAGE }}:${{ github.sha }}
+          build-args: |
+            GIT_SHA=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Run container and smoke test
+        run: |
+          mkdir -p logs
+          docker run -d --name api -p 8000:8000 ${IMAGE}:1.0.0
+          scripts/smoke_test.sh http://localhost:8000 | tee logs/container_smoke_test.log
+          exit ${PIPESTATUS[0]}
+      - name: Container health and logs
+        if: always()
+        run: |
+          docker inspect --format '{{.State.Health.Status}}' api || true
+          docker logs api > logs/container.log 2>&1 || true
+      - name: Save image for the deploy job
+        run: docker save ${IMAGE}:1.0.0 | gzip > image.tar.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: image
+          path: image.tar.gz
+          retention-days: 3
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: container-logs
+          path: logs/
+      - name: Push to GitHub Container Registry (main only)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          REPO="ghcr.io/${GITHUB_REPOSITORY,,}/${IMAGE}"
+          docker tag ${IMAGE}:1.0.0 "$REPO:${{ github.sha }}"
+          docker tag ${IMAGE}:1.0.0 "$REPO:latest"
+          docker push "$REPO:${{ github.sha }}"
+          docker push "$REPO:latest"
+
+  deploy-kind:
+    name: Deploy to Kubernetes (kind)
+    needs: docker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: image
+      - name: Create kind cluster
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: heart-risk
+      - name: Load image into the cluster
+        run: |
+          gunzip -c image.tar.gz > image.tar
+          kind load image-archive image.tar --name heart-risk
+      - name: Apply manifests and wait for rollout
+        run: |
+          kubectl apply -k deploy/k8s
+          kubectl -n heart-risk rollout status deploy/heart-risk-api --timeout=180s
+      - name: Smoke test through the Service
+        run: |
+          mkdir -p logs
+          kubectl -n heart-risk port-forward svc/heart-risk-api 8000:8000 > /dev/null 2>&1 &
+          sleep 3
+          scripts/smoke_test.sh http://localhost:8000 | tee logs/k8s_smoke_test.log
+          exit ${PIPESTATUS[0]}
+      - name: Helm chart - lint, render and install alongside
+        run: |
+          helm lint deploy/helm/heart-risk-api
+          helm template heart-risk deploy/helm/heart-risk-api > logs/helm-rendered.yaml
+          helm upgrade --install heart-risk-helm deploy/helm/heart-risk-api \
+            --namespace heart-risk-helm --create-namespace \
+            --set service.type=ClusterIP --set ingress.enabled=false --wait --timeout 180s
+          kubectl -n heart-risk-helm get pods
+      - name: Collect cluster state
+        if: always()
+        run: |
+          kubectl get all -A -o wide > logs/k8s_state.txt 2>&1 || true
+          kubectl -n heart-risk describe deploy heart-risk-api > logs/k8s_describe.txt 2>&1 || true
+          kubectl -n heart-risk logs -l app.kubernetes.io/name=heart-risk-api --tail=200 > logs/k8s_pod_logs.txt 2>&1 || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: deployment-logs
+          path: logs/

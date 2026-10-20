@@ -1,0 +1,28 @@
+# Full environment: data, EDA, training, experiment tracking, API, tests, notebooks.
+# Python 3.11-3.13.  Install:  pip install -r requirements.txt
+-r requirements-serve.txt
+
+# data + modelling + EDA
+matplotlib==3.11.2
+seaborn==0.13.2
+requests==2.34.2
+PyYAML==6.0.3
+
+# experiment tracking + model registry (skops = safe sklearn serialisation)
+mlflow==3.17.1
+skops==0.16.0
+
+# testing + linting
+pytest==9.1.1
+pytest-cov==7.1.0
+httpx==0.28.1
+ruff==0.17.1
+
+# notebooks
+jupyter==1.1.1
+nbconvert==7.17.2
+nbformat==5.11.1
+ipykernel==7.4.0
+
+# this project, as an editable package (src/heartrisk)
+-e .

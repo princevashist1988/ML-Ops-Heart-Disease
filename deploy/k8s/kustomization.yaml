@@ -1,0 +1,12 @@
+# kubectl apply -k deploy/k8s            (API only)
+# kubectl apply -k deploy/k8s/monitoring (Prometheus + Grafana, optional)
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - 00-namespace.yaml
+  - 01-configmap.yaml
+  - 02-deployment.yaml
+  - 03-service.yaml
+  - 04-ingress.yaml
+  - 05-hpa.yaml
+  - 06-pdb.yaml

@@ -1,0 +1,9 @@
+Heart disease risk API deployed as {{ include "heart-risk-api.fullname" . }} in namespace {{ .Release.Namespace }}.
+
+  kubectl -n {{ .Release.Namespace }} get pods,svc,ingress
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "heart-risk-api.fullname" . }} 8000:{{ .Values.service.port }}
+  curl -X POST localhost:8000/predict -H 'Content-Type: application/json' -d @samples/patient_high_risk.json
+{{- if .Values.ingress.enabled }}
+
+Ingress host: http://{{ .Values.ingress.host }}  (map it to your ingress IP in /etc/hosts)
+{{- end }}

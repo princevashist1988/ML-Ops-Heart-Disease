@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: heart-risk-api
+  namespace: heart-risk
+  labels:
+    app.kubernetes.io/name: heart-risk-api
+spec:
+  type: LoadBalancer      # minikube: `minikube tunnel`; Docker Desktop/k3s: localhost; cloud: provider LB
+  selector:
+    app.kubernetes.io/name: heart-risk-api
+  ports:
+    - name: http
+      port: 8000          # 8000 (not 80) so it never collides with the ingress controller's port 80
+      targetPort: http

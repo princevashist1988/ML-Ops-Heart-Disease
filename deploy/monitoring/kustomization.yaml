@@ -1,0 +1,28 @@
+# Monitoring stack for Kubernetes:  kubectl apply -k deploy/monitoring
+#   Prometheus -> http://<node-ip>:30090   Grafana -> http://<node-ip>:30300 (admin/admin)
+# The same prometheus/ and grafana/ files are mounted by docker-compose.yml.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - k8s/namespace.yaml
+  - k8s/prometheus-rbac.yaml
+  - k8s/prometheus.yaml
+  - k8s/grafana.yaml
+configMapGenerator:
+  - name: prometheus-config
+    namespace: monitoring
+    files:
+      - prometheus.yml=prometheus/prometheus-k8s.yml
+      - alert_rules.yml=prometheus/alert_rules.yml
+  - name: grafana-datasources
+    namespace: monitoring
+    files:
+      - grafana/provisioning/datasources/datasource.yml
+  - name: grafana-dashboard-providers
+    namespace: monitoring
+    files:
+      - grafana/provisioning/dashboards/provider.yml
+  - name: grafana-dashboards
+    namespace: monitoring
+    files:
+      - grafana/dashboards/heart-risk-api.json

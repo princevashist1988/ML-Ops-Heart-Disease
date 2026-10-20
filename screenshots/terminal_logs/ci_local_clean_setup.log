@@ -1,0 +1,122 @@
+== Heart-risk MLOps: clean-setup reproducibility run ==
+
+$ ls
+Dockerfile  README.md  data    docker-compose.yml  environment.yml  models     pyproject.toml  requirements-serve.txt  samples	src
+Makefile    configs    deploy  docs		   logs		    notebooks  reports	       requirements.txt        scripts	tests
+
+$ ls data/raw mlflow.db 2>&1   # nothing downloaded or tracked yet
+ls: cannot access 'mlflow.db': No such file or directory
+data/raw:
+
+$ python3.12 -m venv .venv && source .venv/bin/activate
+
+$ pip install -r requirements.txt
+fastapi                            0.150.0
+mlflow                             3.17.1
+pandas                             3.0.6
+scikit-learn                       1.9.1
+
+$ scripts/ci_local.sh   # lint -> tests -> data -> EDA -> train -> docker -> smoke
+
+==== [07:28:05] 1/6 lint (ruff) ====
+All checks passed!
+23 files already formatted
+
+==== [07:28:05] 2/6 unit tests (pytest + coverage) ====
+.........................................................                                                                                      [100%]
+=================================================================== tests coverage ===================================================================
+__________________________________________________ coverage: platform linux, python 3.12.3-final-0 ___________________________________________________
+
+Name                              Stmts   Miss  Cover
+-----------------------------------------------------
+src/heartrisk/__init__.py             1      0   100%
+src/heartrisk/api/__init__.py         0      0   100%
+src/heartrisk/api/main.py           133      1    99%
+src/heartrisk/api/monitoring.py      90      8    91%
+src/heartrisk/api/schemas.py         44      0   100%
+src/heartrisk/config.py              29      0   100%
+src/heartrisk/data.py               183     46    75%
+src/heartrisk/eda.py                169     11    93%
+src/heartrisk/evaluate.py           117      1    99%
+src/heartrisk/features.py            52      0   100%
+src/heartrisk/models.py              13      0   100%
+src/heartrisk/predict.py             70      3    96%
+src/heartrisk/train.py              207     32    85%
+-----------------------------------------------------
+TOTAL                              1108    102    91%
+Coverage XML written to file reports/coverage.xml
+57 passed in 66.28s (0:01:06)
+### Unit tests: PASSED
+
+| total | passed | failed | errors | skipped | time (s) |
+|---|---|---|---|---|---|
+| 57 | 57 | 0 | 0 | 0 | 66.3 |
+
+Line coverage: **90.8%**
+
+
+==== [07:29:19] 3/6 data acquisition + EDA ====
+    "positive_rate": 0.3618
+  }
+}
+EDA figures -> reports/figures/eda
+
+==== [07:29:29] 4/6 train + MLflow tracking + quality gate ====
+2026-10-20 07:29:32,860 INFO heartrisk.train: Train 242 rows / test 61 rows, positive rate 0.459
+2026-10-20 07:30:37,941 INFO heartrisk.train: logistic_regression  CV ROC-AUC 0.899 +/- 0.039 | test ROC-AUC 0.961 | 53.9s
+2026-10-20 07:32:51,107 INFO heartrisk.train: random_forest        CV ROC-AUC 0.894 +/- 0.041 | test ROC-AUC 0.956 | 124.8s
+2026-10-20 07:33:40,896 INFO heartrisk.train: gradient_boosting    CV ROC-AUC 0.877 +/- 0.044 | test ROC-AUC 0.958 | 43.9s
+2026-10-20 07:33:41,072 INFO heartrisk.train: Champion: logistic_regression (highest CV roc_auc)
+Successfully registered model 'heart-disease-classifier'.
+Created version '1' of model 'heart-disease-classifier'.
+
+                     cv_roc_auc_mean  cv_roc_auc_std  test_recall  test_roc_auc
+name                                                                           
+logistic_regression           0.8994          0.0392       0.9286        0.9610
+random_forest                 0.8940          0.0408       0.9286        0.9556
+gradient_boosting             0.8767          0.0437       0.9286        0.9578
+
+Champion: logistic_regression  threshold=0.31  test ROC-AUC=0.961  recall=1.000  precision=0.718
+2026-10-20 07:33:50,446 INFO heartrisk.train: Quality gate passed
+### Model comparison (repeated stratified 5-fold CV on the training split)
+
+| model | CV ROC-AUC | CV recall | test ROC-AUC |
+|---|---|---|---|
+| logistic_regression | 0.899 ± 0.039 | 0.792 | 0.961 |
+| random_forest | 0.894 ± 0.041 | 0.768 | 0.956 |
+| gradient_boosting | 0.877 ± 0.044 | 0.762 | 0.958 |
+
+**Champion:** `logistic_regression`  |  decision threshold **0.31**
+
+| hold-out metric | value |
+|---|---|
+| roc_auc | 0.961 |
+| accuracy | 0.820 |
+| precision | 0.718 |
+| recall | 1.000 |
+| f1 | 0.836 |
+
+External validation (Hungarian site): ROC-AUC 0.894, recall 0.802, precision 0.752
+
+
+==== [07:33:52] 5/6 docker build ====
+#14 exporting attestation manifest sha256:b59f3549d84348aa4bca150b229d17963a7060e6715af4c54cbe01f28738ba5a done
+#14 exporting manifest list sha256:f70cc31d26cf928df88be8543747ea12e22968b3415a196bd9177e4484c54e00 done
+#14 naming to docker.io/library/heart-risk-api:ci done
+#14 unpacking to docker.io/library/heart-risk-api:ci 0.0s done
+#14 DONE 0.3s
+
+==== [07:33:53] 6/6 run container + smoke test ====
+Smoke testing http://localhost:18000
+  PASS /ready -> {"status":"ready","model_version":"heart-disease-classifier/v1"}
+  PASS /health
+    high-risk -> {"prediction":1,"label":"heart disease","probability":0.9773,"confidence":0.9773,"risk_band":"high","threshold":0.31,"model_version":"heart-disease-classifier/v1","request_id":"b3e2c80dbe6d42d7"}
+  PASS /predict high-risk patient flagged with confidence
+    low-risk  -> {"prediction":0,"label":"no heart disease","probability":0.1148,"confidence":0.8852,"risk_band":"low","threshold":0.31,"model_version":"heart-disease-classifier/v1","request_id":"766ffdab809e496c"}
+  PASS /predict low-risk patient cleared
+  PASS /predict/batch scored 3 patients
+  PASS invalid payload rejected with 422
+  PASS /metrics exposes Prometheus counters
+All smoke tests passed.
+
+CI pipeline passed.

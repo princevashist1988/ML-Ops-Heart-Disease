@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Heart Risk MLOps - Architecture</title>
+<style>
+  :root { --ink:#1f2933; --muted:#64748b; --line:#475569;
+          --data:#0f766e; --train:#2563eb; --ci:#c2410c; --serve:#7c3aed; --obs:#334155; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:#fff; color:var(--ink); font: 13px/1.35 "Helvetica Neue", Helvetica, Arial, sans-serif; }
+  #wrap { position:relative; width:1500px; padding:22px 26px 26px; }
+  h1 { font-size:20px; margin:0 0 2px; letter-spacing:-.01em; }
+  .sub { color:var(--muted); margin-bottom:16px; font-size:12.5px; }
+  .row { display:grid; gap:22px; margin-bottom:26px; }
+  .r1 { grid-template-columns: 0.95fr 1.45fr 0.9fr; }
+  .r2 { grid-template-columns: 1fr; }
+  .r3 { grid-template-columns: 1.55fr 1fr; }
+  .lane { border:1.6px solid; border-radius:12px; padding:26px 14px 14px; position:relative; }
+  .lane > .t { position:absolute; top:-10px; left:14px; background:#fff; padding:0 8px; font-weight:700; font-size:13px; letter-spacing:.02em; }
+  .data  { border-color:var(--data);  background:#f2f8f7; } .data  > .t { color:var(--data); }
+  .train { border-color:var(--train); background:#f3f6fe; } .train > .t { color:var(--train); }
+  .art   { border-color:#64748b; background:#f8fafc; }        .art   > .t { color:#334155; }
+  .ci    { border-color:var(--ci);    background:#fff8f2; } .ci    > .t { color:var(--ci); }
+  .serve { border-color:var(--serve); background:#f7f5ff; } .serve > .t { color:var(--serve); }
+  .obs   { border-color:var(--obs);   background:#f4f6f8; } .obs   > .t { color:var(--obs); }
+  .flow { display:flex; gap:26px; align-items:stretch; }
+  .col  { display:flex; flex-direction:column; gap:18px; flex:1; }
+  .b { background:#fff; border:1.2px solid #94a3b8; border-radius:8px; padding:8px 10px; flex:1;
+       box-shadow:0 1px 0 rgba(15,23,42,.04); position:relative; z-index:2; }
+  .b b { display:block; font-size:12.5px; margin-bottom:2px; }
+  .b span { color:#475569; font-size:11.5px; }
+  .store { border-style:solid; border-radius:14px 14px 8px 8px; }
+  .dashed { border-style:dashed; }
+  .gate { border-color:var(--ci); }
+  svg#links { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:1; overflow:visible; }
+  .legend { display:flex; gap:18px; color:var(--muted); font-size:11.5px; margin-top:-6px; }
+  .legend i { display:inline-block; width:26px; border-top:1.6px solid var(--line); vertical-align:middle; margin-right:6px; }
+  .legend i.d { border-top-style:dashed; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <svg id="links"></svg>
+  <h1>Heart disease risk classifier - end-to-end MLOps architecture</h1>
+  <div class="sub">UCI Cleveland data &rarr; tracked, quality-gated training &rarr; CI/CD &rarr; containerised API on Kubernetes &rarr; metrics, logs and drift monitoring</div>
+
+  <div class="row r1">
+    <div class="lane data"><div class="t">1 &nbsp;DATA</div>
+      <div class="col">
+        <div class="flow">
+          <div class="b store" id="uci"><b>UCI archive (id 45)</b><span>primary source</span></div>
+          <div class="b store dashed" id="mirror"><b>Mirror fallback</b><span>accepted only if SHA-256 matches</span></div>
+        </div>
+        <div class="b" id="dl"><b>heartrisk.data</b><span>download &middot; parse &middot; range checks &middot; binarise target &middot; schema contract</span></div>
+        <div class="flow">
+          <div class="b" id="csv"><b>Clean CSV (303 rows)</b><span>missing ca/thal kept for in-pipeline imputation</span></div>
+          <div class="b" id="eda"><b>heartrisk.eda</b><span>8 figures, MI &amp; correlation</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lane train"><div class="t">2 &nbsp;TRAIN &amp; TRACK</div>
+      <div class="col">
+        <div class="b" id="pipe"><b>One sklearn Pipeline</b><span>clinical feature engineer &rarr; impute (median / mode) &rarr; scale + one-hot &rarr; classifier. Same object in CV, training and serving.</span></div>
+        <div class="flow">
+          <div class="b" id="cv"><b>GridSearchCV</b><span>repeated stratified 5-fold &times;3<br>LR elastic-net &middot; Random Forest &middot; Gradient Boosting<br>88 candidates incl. feature ablation</span></div>
+          <div class="b" id="sel"><b>Selection</b><span>best CV ROC-AUC (parsimony rule)<br>threshold = max F2 on out-of-fold preds<br>quality gate: AUC &ge; 0.80, recall &ge; 0.75</span></div>
+        </div>
+        <div class="b store" id="mlflow"><b>MLflow tracking + model registry</b><span>92 runs: params, CV/test metrics, ROC/PR/calibration/importance plots, signature-typed models &middot; alias <b style="display:inline">@champion</b></span></div>
+      </div>
+    </div>
+
+    <div class="lane art"><div class="t">PACKAGED MODEL</div>
+      <div class="col">
+        <div class="b store" id="joblib"><b>model.joblib</b><span>full preprocessing + classifier</span></div>
+        <div class="b store" id="card"><b>model_card.json</b><span>threshold, metrics, data SHA, training profile</span></div>
+        <div class="b store" id="mlmodel"><b>MLflow model (skops)</b><span>pinned requirements, input schema</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row r2">
+    <div class="lane ci"><div class="t">3 &nbsp;CI/CD - GITHUB ACTIONS (fails fast, artefacts + job summary per stage)</div>
+      <div class="flow">
+        <div class="b" id="lint"><b>lint</b><span>ruff check + format</span></div>
+        <div class="b" id="test"><b>test</b><span>57 pytest tests, coverage, JUnit</span></div>
+        <div class="b gate" id="trainjob"><b>train</b><span>data &rarr; EDA &rarr; tune &rarr; gate; uploads model + MLflow store</span></div>
+        <div class="b" id="dockerjob"><b>docker</b><span>multi-stage image, run, smoke test (7 checks)</span></div>
+        <div class="b" id="kind"><b>deploy-kind</b><span>kubectl apply -k, rollout, smoke; helm lint + install</span></div>
+        <div class="b dashed" id="ghcr"><b>push to GHCR</b><span>main branch only</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row r3">
+    <div class="lane serve"><div class="t">4 &nbsp;SERVE - KUBERNETES (raw manifests or Helm chart)</div>
+      <div class="flow">
+        <div class="b" id="client"><b>Client</b><span>curl &middot; Swagger UI (/docs, offline assets) &middot; batch jobs</span></div>
+        <div class="col" style="flex:1">
+          <div class="b" id="ingress"><b>Ingress</b><span>heart-risk.local</span></div>
+          <div class="b" id="svc"><b>Service (LoadBalancer :8000)</b><span>round-robin over ready pods</span></div>
+        </div>
+        <div class="b" id="pods" style="flex:1.5"><b>Deployment: 2-5 pods (HPA, PDB)</b><span>FastAPI + uvicorn, 1 worker per pod<br>POST /predict, /predict/batch &middot; GET /health, /ready, /metrics, /model-info<br>pydantic validation &middot; non-root &middot; read-only FS &middot; probes &middot; zero-downtime rollouts</span></div>
+      </div>
+    </div>
+    <div class="lane obs"><div class="t">5 &nbsp;OBSERVE</div>
+      <div class="col">
+        <div class="flow">
+          <div class="b" id="prom"><b>Prometheus</b><span>scrapes /metrics of every pod (annotation discovery) &middot; 5 alert rules (down, 5xx, p95, model, drift)</span></div>
+          <div class="b" id="graf"><b>Grafana</b><span>16 panels: traffic, latency, outcomes, drift</span></div>
+        </div>
+        <div class="flow">
+          <div class="b" id="logs"><b>Structured JSON logs</b><span>request id, latency, outcome; no clinical inputs</span></div>
+          <div class="b" id="dash"><b>/dashboard</b><span>built-in live view</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="legend"><span><i></i>data / control flow</span><span><i class="d"></i>fallback / optional path</span></div>
+</div>
+<script>
+const svg = document.getElementById("links");
+const W = document.getElementById("wrap");
+const NS = "http://www.w3.org/2000/svg";
+svg.innerHTML = '<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#475569"/></marker></defs>';
+function box(id) { const r = document.getElementById(id).getBoundingClientRect(), o = W.getBoundingClientRect();
+  return { l: r.left - o.left, r: r.right - o.left, t: r.top - o.top, b: r.bottom - o.top, cx: (r.left + r.right) / 2 - o.left, cy: (r.top + r.bottom) / 2 - o.top }; }
+function link(a, b, from = "r", to = "l", dashed = false, label = "") {
+  const A = box(a), B = box(b);
+  const p = { r: [A.r, A.cy], l: [A.l, A.cy], b: [A.cx, A.b], t: [A.cx, A.t] }[from];
+  const q = { l: [B.l, B.cy], r: [B.r, B.cy], t: [B.cx, B.t], b: [B.cx, B.b] }[to];
+  const path = document.createElementNS(NS, "path");
+  let d;
+  if ((from === "b" && to === "t") || (from === "t" && to === "b")) { const my = (p[1] + q[1]) / 2; d = `M${p[0]},${p[1]} C${p[0]},${my} ${q[0]},${my} ${q[0]},${q[1]}`; }
+  else { const mx = (p[0] + q[0]) / 2; d = `M${p[0]},${p[1]} C${mx},${p[1]} ${mx},${q[1]} ${q[0]},${q[1]}`; }
+  path.setAttribute("d", d); path.setAttribute("fill", "none"); path.setAttribute("stroke", "#475569");
+  path.setAttribute("stroke-width", "1.5"); path.setAttribute("marker-end", "url(#a)");
+  if (dashed) path.setAttribute("stroke-dasharray", "5 4");
+  svg.appendChild(path);
+  if (label) { const t = document.createElementNS(NS, "text"); t.textContent = label;
+    t.setAttribute("x", (p[0] + q[0]) / 2 + 4); t.setAttribute("y", (p[1] + q[1]) / 2 - 4);
+    t.setAttribute("font-size", "10.5"); t.setAttribute("fill", "#475569"); svg.appendChild(t); }
+}
+link("uci", "dl", "b", "t"); link("mirror", "dl", "b", "t", true);
+link("dl", "csv", "b", "t"); link("csv", "eda", "r", "l");
+link("dl", "pipe", "r", "l");
+link("pipe", "cv", "b", "t"); link("cv", "sel", "r", "l"); link("cv", "mlflow", "b", "t");
+link("sel", "joblib", "r", "l"); link("sel", "mlflow", "b", "t");
+link("joblib", "card", "b", "t"); link("card", "mlmodel", "b", "t");
+link("lint", "test"); link("test", "trainjob"); link("trainjob", "dockerjob"); link("dockerjob", "kind"); link("kind", "ghcr", "r", "l", true);
+link("mlmodel", "dockerjob", "b", "t");
+link("client", "ingress"); link("client", "svc", "r", "l", true);
+link("ingress", "svc", "b", "t"); link("svc", "pods");
+link("kind", "pods", "b", "t", true, "same manifests");
+link("pods", "prom", "r", "l"); link("prom", "graf");
+link("pods", "logs", "r", "l");
+</script>
+</body>
+</html>

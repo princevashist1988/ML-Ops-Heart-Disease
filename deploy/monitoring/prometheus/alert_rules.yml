@@ -1,0 +1,45 @@
+groups:
+  - name: heart-risk-api
+    rules:
+      - alert: HeartRiskApiDown
+        expr: up{service="heart-risk-api"} == 0
+        for: 1m
+        labels: {severity: critical}
+        annotations:
+          summary: "API target {{ $labels.instance }} is down"
+
+      - alert: HeartRiskModelNotLoaded
+        expr: max(heartrisk_model_loaded) < 1
+        for: 1m
+        labels: {severity: critical}
+        annotations:
+          summary: "Model failed to load - pods are not ready"
+
+      - alert: HeartRiskHighErrorRate
+        expr: |
+          sum(rate(heartrisk_http_requests_total{endpoint=~"/predict.*",status=~"5.."}[5m]))
+            / clamp_min(sum(rate(heartrisk_http_requests_total{endpoint=~"/predict.*"}[5m])), 1e-9) > 0.05
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "More than 5% of prediction requests are failing"
+
+      - alert: HeartRiskHighLatencyP95
+        expr: |
+          histogram_quantile(0.95, sum by (le) (rate(heartrisk_http_request_duration_seconds_bucket{endpoint="/predict"}[5m]))) > 0.25
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "p95 /predict latency above 250 ms"
+
+      - alert: HeartRiskInputDrift
+        # live mean of a monitored feature more than 15% away from its training mean
+        expr: |
+          abs(
+            (sum by (feature) (rate(heartrisk_input_feature_sum[15m])) / sum by (feature) (rate(heartrisk_input_feature_count[15m])))
+            - on (feature) max by (feature) (heartrisk_training_feature_mean)
+          ) / on (feature) max by (feature) (heartrisk_training_feature_mean) > 0.15
+        for: 15m
+        labels: {severity: info}
+        annotations:
+          summary: "Input drift on {{ $labels.feature }} - consider re-validating the model"

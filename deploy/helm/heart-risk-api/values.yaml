@@ -1,0 +1,55 @@
+# Default values for heart-risk-api.
+replicaCount: 2
+
+image:
+  repository: heart-risk-api        # e.g. ghcr.io/<user>/heart-risk-mlops/heart-risk-api in the cloud
+  tag: "1.0.0"
+  pullPolicy: IfNotPresent
+
+config:
+  logLevel: INFO
+  decisionThreshold: ""             # empty = use the threshold stored in the model card
+
+service:
+  type: LoadBalancer
+  port: 8000
+
+ingress:
+  enabled: true
+  className: ""                     # empty = cluster default (nginx on minikube, traefik on k3s)
+  host: heart-risk.local
+  annotations: {}
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+metrics:
+  scrape: true                      # adds prometheus.io/* pod annotations
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]

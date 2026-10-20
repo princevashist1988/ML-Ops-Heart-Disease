@@ -1,0 +1,10 @@
+# Conda alternative to requirements.txt:
+#   conda env create -f environment.yml && conda activate heart-risk-mlops
+name: heart-risk-mlops
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - pip
+  - pip:
+      - -r requirements.txt

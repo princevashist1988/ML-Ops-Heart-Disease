@@ -1,0 +1,129 @@
+{
+  "rows": 303,
+  "columns": 14,
+  "class_counts": {
+    "No disease": 164,
+    "Disease": 139
+  },
+  "missing_cells": {
+    "ca": 4,
+    "thal": 2
+  },
+  "duplicates": 0,
+  "describe": {
+    "age": {
+      "count": 303.0,
+      "mean": 54.44,
+      "std": 9.04,
+      "min": 29.0,
+      "25%": 48.0,
+      "50%": 56.0,
+      "75%": 61.0,
+      "max": 77.0
+    },
+    "trestbps": {
+      "count": 303.0,
+      "mean": 131.69,
+      "std": 17.6,
+      "min": 94.0,
+      "25%": 120.0,
+      "50%": 130.0,
+      "75%": 140.0,
+      "max": 200.0
+    },
+    "chol": {
+      "count": 303.0,
+      "mean": 246.69,
+      "std": 51.78,
+      "min": 126.0,
+      "25%": 211.0,
+      "50%": 241.0,
+      "75%": 275.0,
+      "max": 564.0
+    },
+    "thalach": {
+      "count": 303.0,
+      "mean": 149.61,
+      "std": 22.88,
+      "min": 71.0,
+      "25%": 133.5,
+      "50%": 153.0,
+      "75%": 166.0,
+      "max": 202.0
+    },
+    "oldpeak": {
+      "count": 303.0,
+      "mean": 1.04,
+      "std": 1.16,
+      "min": 0.0,
+      "25%": 0.0,
+      "50%": 0.8,
+      "75%": 1.6,
+      "max": 6.2
+    },
+    "ca": {
+      "count": 299.0,
+      "mean": 0.67,
+      "std": 0.94,
+      "min": 0.0,
+      "25%": 0.0,
+      "50%": 0.0,
+      "75%": 1.0,
+      "max": 3.0
+    }
+  },
+  "outliers_iqr": {
+    "age": 0,
+    "trestbps": 9,
+    "chol": 5,
+    "thalach": 1,
+    "oldpeak": 5,
+    "ca": 20
+  },
+  "mutual_information": {
+    "thal": 0.143,
+    "cp": 0.1421,
+    "ca": 0.1258,
+    "oldpeak": 0.1027,
+    "exang": 0.0964,
+    "chol": 0.0893,
+    "slope": 0.0779,
+    "thalach": 0.0736,
+    "sex": 0.0397,
+    "restecg": 0.0167,
+    "fbs": 0.0003,
+    "trestbps": 0.0,
+    "age": 0.0
+  },
+  "spearman_with_target": {
+    "thalach": -0.423,
+    "fbs": 0.025,
+    "chol": 0.121,
+    "trestbps": 0.128,
+    "restecg": 0.169,
+    "age": 0.237,
+    "sex": 0.277,
+    "slope": 0.364,
+    "oldpeak": 0.413,
+    "exang": 0.432,
+    "cp": 0.472,
+    "ca": 0.489,
+    "thal": 0.522
+  },
+  "hr_pct_predicted_median_by_class": {
+    "0": 0.961,
+    "1": 0.866
+  },
+  "below_85pct_hr_disease_rate": 0.717,
+  "above_85pct_hr_disease_rate": 0.346,
+  "figures": [
+    "reports/figures/eda/01_class_balance.png",
+    "reports/figures/eda/02_missing_values.png",
+    "reports/figures/eda/03_numeric_histograms.png",
+    "reports/figures/eda/04_boxplots.png",
+    "reports/figures/eda/05_categorical_disease_rates.png",
+    "reports/figures/eda/06_correlation_heatmap.png",
+    "reports/figures/eda/07_heart_rate_vs_age.png",
+    "reports/figures/eda/08_mutual_information.png"
+  ]
+}

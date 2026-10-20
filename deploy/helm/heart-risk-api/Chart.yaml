@@ -1,0 +1,7 @@
+apiVersion: v2
+name: heart-risk-api
+description: Heart disease risk classifier (FastAPI + scikit-learn) with probes, HPA, PDB and Prometheus scraping
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords: [mlops, fastapi, scikit-learn, heart-disease]

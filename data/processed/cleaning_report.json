@@ -1,0 +1,35 @@
+{
+  "cleveland": {
+    "path": "data/processed/heart_cleveland_clean.csv",
+    "rows_in": 303,
+    "rows_out": 303,
+    "duplicates_removed": 0,
+    "out_of_range_nulled": {},
+    "missing_after": {
+      "ca": 4,
+      "thal": 2
+    },
+    "positive_rate": 0.4587
+  },
+  "hungarian": {
+    "path": "data/processed/heart_hungarian_clean.csv",
+    "rows_in": 294,
+    "rows_out": 293,
+    "duplicates_removed": 1,
+    "out_of_range_nulled": {
+      "chol": 1
+    },
+    "missing_after": {
+      "trestbps": 1,
+      "chol": 23,
+      "fbs": 8,
+      "restecg": 1,
+      "thalach": 1,
+      "exang": 1,
+      "slope": 189,
+      "ca": 290,
+      "thal": 265
+    },
+    "positive_rate": 0.3618
+  }
+}

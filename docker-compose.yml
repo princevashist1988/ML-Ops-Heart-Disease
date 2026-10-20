@@ -1,0 +1,52 @@
+# Local production-like stack: API + Prometheus + Grafana
+#   docker compose up -d --build
+#   API http://localhost:8000/docs | Prometheus http://localhost:9090 | Grafana http://localhost:3000 (admin/admin)
+#   python scripts/generate_traffic.py --url http://localhost:8000 --minutes 3   # populate the dashboards
+services:
+  api:
+    build:
+      context: .
+      args:
+        BASE_IMAGE: ${BASE_IMAGE:-python:3.12-slim}
+    image: heart-risk-api:1.0.0
+    container_name: heart-risk-api
+    ports: ["8000:8000"]
+    environment:
+      LOG_LEVEL: INFO
+      LOG_FILE: /var/log/heartrisk/api.log
+    volumes:
+      - api-logs:/var/log/heartrisk
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v3.15.0
+    container_name: heart-risk-prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=2d
+      - --web.enable-lifecycle
+    ports: ["9090:9090"]
+    volumes:
+      - ./deploy/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./deploy/monitoring/prometheus/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
+    depends_on: [api]
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11.5.2
+    container_name: heart-risk-grafana
+    ports: ["3000:3000"]
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/heart-risk-api.json
+    volumes:
+      - ./deploy/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./deploy/monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on: [prometheus]
+    restart: unless-stopped
+
+volumes:
+  api-logs:

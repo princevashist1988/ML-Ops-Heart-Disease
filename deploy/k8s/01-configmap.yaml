@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: heart-risk-api-config
+  namespace: heart-risk
+  labels:
+    app.kubernetes.io/name: heart-risk-api
+data:
+  LOG_LEVEL: "INFO"
+  # Uncomment to override the threshold stored in the model card without a rebuild:
+  # DECISION_THRESHOLD: "0.31"

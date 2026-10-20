@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Heart Risk API Monitor</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #ffffff; --ink: #1f2933; --muted: #64748b; --line: #e2e8f0;
+    --accent: #c2410c; --calm: #0f766e; --warn: #b45309; --bad: #b91c1c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1419; --panel: #171e26; --ink: #e5e9ee; --muted: #94a3b8; --line: #263241;
+      --accent: #f97316; --calm: #2dd4bf;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: baseline;
+           padding: 18px 24px 8px; }
+  h1 { font-size: 18px; margin: 0; letter-spacing: -0.01em; }
+  .meta { color: var(--muted); font-size: 12.5px; }
+  .live { display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+          background: var(--calm); margin-right: 6px; animation: pulse 2s infinite; }
+  @keyframes pulse { 50% { opacity: .3; } }
+  main { padding: 8px 24px 32px; display: grid; gap: 16px;
+         grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); max-width: 1280px; }
+  .kpis { grid-column: 1 / -1; display: grid; gap: 12px;
+          grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  .kpi .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  .kpi .value { font-size: 26px; font-weight: 650; margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .kpi .sub { color: var(--muted); font-size: 12px; }
+  h2 { font-size: 13px; margin: 0 0 10px; color: var(--muted); font-weight: 600;
+       text-transform: uppercase; letter-spacing: .04em; }
+  .wide { grid-column: 1 / -1; }
+  svg { width: 100%; height: auto; display: block; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { color: var(--muted); font-weight: 600; }
+  td.s2 { color: var(--calm); } td.s4 { color: var(--warn); } td.s5 { color: var(--bad); }
+  .tablewrap { overflow-x: auto; }
+  .empty { color: var(--muted); padding: 16px 0; }
+  @media (max-width: 600px) { header, main { padding-left: 16px; padding-right: 16px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1><span class="live"></span>Heart Disease Risk API - live monitor</h1>
+  <span class="meta" id="pod"></span>
+  <span class="meta" id="meta">connecting...</span>
+</header>
+<main>
+  <section class="kpis">
+    <div class="card kpi"><div class="label">Requests (15 min)</div><div class="value" id="k-req">-</div><div class="sub" id="k-total"></div></div>
+    <div class="card kpi"><div class="label">Server errors (5xx)</div><div class="value" id="k-err">-</div><div class="sub" id="k-status"></div></div>
+    <div class="card kpi"><div class="label">Latency p50 / p95</div><div class="value" id="k-lat">-</div><div class="sub">milliseconds</div></div>
+    <div class="card kpi"><div class="label">Predictions</div><div class="value" id="k-pred">-</div><div class="sub" id="k-pos"></div></div>
+  </section>
+  <section class="card"><h2>Requests per minute</h2><div id="rpm"></div></section>
+  <section class="card"><h2>Predicted probability distribution</h2><div id="hist"></div></section>
+  <section class="card wide"><h2>Recent requests</h2><div class="tablewrap" id="recent"></div></section>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
+function bars(values, labels, colourFn, h = 150) {
+  const w = 420, pad = 22, n = values.length, max = Math.max(1, ...values);
+  const bw = (w - pad) / n;
+  let s = `<svg viewBox="0 0 ${w} ${h + 22}" role="img">`;
+  s += `<line x1="${pad}" y1="${h}" x2="${w}" y2="${h}" stroke="${css('--line')}"/>`;
+  s += `<text x="0" y="12" font-size="10" fill="${css('--muted')}">${max}</text>`;
+  values.forEach((v, i) => {
+    const bh = (v / max) * (h - 16), x = pad + i * bw + 2;
+    s += `<rect x="${x}" y="${h - bh}" width="${bw - 4}" height="${bh}" rx="2" fill="${colourFn(i)}"><title>${labels[i]}: ${v}</title></rect>`;
+    if (labels[i] !== "") s += `<text x="${x + (bw - 4) / 2}" y="${h + 14}" font-size="9.5" text-anchor="middle" fill="${css('--muted')}">${labels[i]}</text>`;
+  });
+  return s + "</svg>";
+}
+
+async function refresh() {
+  try {
+    const r = await fetch("/stats", { cache: "no-store" });
+    const d = await r.json();
+    $("pod").textContent = d.pod ? `served by pod ${d.pod}` : "";
+    $("meta").textContent = `model ${d.model_version} | threshold ${d.threshold} | uptime ${Math.round(d.uptime_s / 60)} min | refreshed ${new Date().toLocaleTimeString()}`;
+    $("k-req").textContent = d.requests;
+    $("k-total").textContent = `${d.requests_total_since_start} incl. probes since start`;
+    $("k-err").textContent = (d.server_error_rate * 100).toFixed(1) + "%";
+    $("k-err").style.color = d.server_error_rate > 0.01 ? css("--bad") : css("--calm");
+    $("k-status").textContent = `rejected inputs (4xx): ${(d.client_error_rate * 100).toFixed(1)}%  |  ` +
+      Object.entries(d.status_counts).map(([k, v]) => `${k}: ${v}`).join("  ");
+    $("k-lat").textContent = `${d.latency_ms.p50} / ${d.latency_ms.p95}`;
+    $("k-pred").textContent = d.predictions;
+    $("k-pos").textContent = `${(d.positive_rate * 100).toFixed(0)}% flagged as disease`;
+    const rpm = d.requests_per_minute;
+    $("rpm").innerHTML = bars(rpm, rpm.map((_, i) => (i % 3 === 0 ? `-${rpm.length - 1 - i}m` : "")), () => css("--calm"));
+    const hl = d.probability_histogram.map((_, i) => `${i / 10}`);
+    $("hist").innerHTML = bars(d.probability_histogram, hl, (i) => (i / 10 >= d.threshold ? css("--accent") : css("--calm")));
+    if (!d.recent.length) { $("recent").innerHTML = '<div class="empty">No API traffic yet - send a POST to /predict.</div>'; return; }
+    $("recent").innerHTML = "<table><thead><tr><th>Time (UTC)</th><th>Request ID</th><th>Method</th><th>Endpoint</th><th>Status</th><th>Latency ms</th><th>Outcome</th></tr></thead><tbody>" +
+      d.recent.map((e) => `<tr><td>${e.time}</td><td>${e.request_id}</td><td>${e.method}</td><td>${e.path}</td><td class="s${String(e.status)[0]}">${e.status}</td><td>${e.latency_ms}</td><td>${e.summary ?? ""}</td></tr>`).join("") +
+      "</tbody></table>";
+  } catch (err) {
+    $("meta").textContent = "stats endpoint unreachable: " + err;
+  }
+}
+refresh();
+setInterval(refresh, 3000);
+</script>
+</body>
+</html>

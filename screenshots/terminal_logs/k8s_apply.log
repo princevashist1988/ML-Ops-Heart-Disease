@@ -1,0 +1,10 @@
+namespace/heart-risk created
+configmap/heart-risk-api-config created
+service/heart-risk-api created
+deployment.apps/heart-risk-api created
+poddisruptionbudget.policy/heart-risk-api created
+horizontalpodautoscaler.autoscaling/heart-risk-api created
+ingress.networking.k8s.io/heart-risk-api created
+Waiting for deployment "heart-risk-api" rollout to finish: 0 of 2 updated replicas are available...
+Waiting for deployment "heart-risk-api" rollout to finish: 1 of 2 updated replicas are available...
+deployment "heart-risk-api" successfully rolled out

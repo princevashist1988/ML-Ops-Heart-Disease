@@ -1,0 +1,11 @@
+Smoke testing http://localhost:8000
+  PASS /ready -> {"status":"ready","model_version":"heart-disease-classifier/v1"}
+  PASS /health
+    high-risk -> {"prediction":1,"label":"heart disease","probability":0.9773,"confidence":0.9773,"risk_band":"high","threshold":0.31,"model_version":"heart-disease-classifier/v1","request_id":"5790e7f7765f49bc"}
+  PASS /predict high-risk patient flagged with confidence
+    low-risk  -> {"prediction":0,"label":"no heart disease","probability":0.1148,"confidence":0.8852,"risk_band":"low","threshold":0.31,"model_version":"heart-disease-classifier/v1","request_id":"30c410f4606e45df"}
+  PASS /predict low-risk patient cleared
+  PASS3 /predict/batch scored 3 patients
+  PASS3 invalid payload rejected with 422
+  PASS3 /metrics exposes Prometheus counters
+All smoke tests passed.

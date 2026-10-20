@@ -1,0 +1,21 @@
+NAME                             READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS   IMAGES                 SELECTOR
+deployment.apps/heart-risk-api   2/2     2            2           18s   api          heart-risk-api:1.0.0   app.kubernetes.io/name=heart-risk-api
+
+NAME                                        DESIRED   CURRENT   READY   AGE   CONTAINERS   IMAGES                 SELECTOR
+replicaset.apps/heart-risk-api-5fc4449955   2         2         2       18s   api          heart-risk-api:1.0.0   app.kubernetes.io/name=heart-risk-api,pod-template-hash=5fc4449955
+
+NAME                                  READY   STATUS    RESTARTS   AGE   IP           NODE   NOMINATED NODE   READINESS GATES
+pod/heart-risk-api-5fc4449955-sxqs7   1/1     Running   0          18s   10.42.0.11   vm     <none>           <none>
+pod/heart-risk-api-5fc4449955-zsgq7   1/1     Running   0          18s   10.42.0.10   vm     <none>           <none>
+
+NAME                     TYPE           CLUSTER-IP     EXTERNAL-IP   PORT(S)          AGE   SELECTOR
+service/heart-risk-api   LoadBalancer   10.43.249.34   192.0.2.2     8000:32277/TCP   18s   app.kubernetes.io/name=heart-risk-api
+
+NAME                                       CLASS     HOSTS              ADDRESS     PORTS   AGE
+ingress.networking.k8s.io/heart-risk-api   traefik   heart-risk.local   192.0.2.2   80      18s
+
+NAME                                                 REFERENCE                   TARGETS              MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/heart-risk-api   Deployment/heart-risk-api   cpu: <unknown>/70%   2         5         2          18s
+
+NAME                                        MIN AVAILABLE   MAX UNAVAILABLE   ALLOWED DISRUPTIONS   AGE
+poddisruptionbudget.policy/heart-risk-api   1               N/A               1                     18s

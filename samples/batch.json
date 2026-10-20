@@ -1,0 +1,5 @@
+{"instances": [
+  {"age": 63, "sex": 1, "cp": 1, "trestbps": 145, "chol": 233, "fbs": 1, "restecg": 2, "thalach": 150, "exang": 0, "oldpeak": 2.3, "slope": 3, "ca": 0, "thal": 6},
+  {"age": 67, "sex": 1, "cp": 4, "trestbps": 120, "chol": 229, "fbs": 0, "restecg": 2, "thalach": 129, "exang": 1, "oldpeak": 2.6, "slope": 2, "ca": 2, "thal": 7},
+  {"age": 38, "sex": 1, "cp": 3, "trestbps": 138, "chol": 175, "fbs": 0, "restecg": 0, "thalach": 173, "exang": 0, "oldpeak": 0.0, "slope": 1, "thal": 3}
+]}

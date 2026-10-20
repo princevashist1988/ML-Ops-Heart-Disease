@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "heartrisk"
+version = "1.0.0"
+description = "Heart disease risk classifier with an end-to-end MLOps pipeline (BITS Pilani AIMLCZG523 Assignment 1)"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "Prince" }]
+
+[project.scripts]
+heartrisk-data = "heartrisk.data:main"
+heartrisk-train = "heartrisk.train:main"
+heartrisk-predict = "heartrisk.predict:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+heartrisk = ["api/static/*.html", "api/static/swagger/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-ra --strict-markers"
+markers = ["slow: tests that train a full model"]
+filterwarnings = [
+  "ignore::DeprecationWarning",
+  "ignore::FutureWarning",
+  "ignore:Using `httpx`",
+  "ignore::PendingDeprecationWarning",
+]
+
+[tool.coverage.run]
+source = ["src/heartrisk"]
+omit = ["src/heartrisk/__main__.py"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["notebooks", ".venv", "mlruns", "mlartifacts"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "N", "SIM", "C4"]
+ignore = ["N803", "N806", "B008"]
+
+[tool.ruff.lint.per-file-ignores]
+"scripts/build_grafana_dashboard.py" = ["E501"]  # long PromQL expressions read better unwrapped

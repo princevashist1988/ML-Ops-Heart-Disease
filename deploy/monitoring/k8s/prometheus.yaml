@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  namespace: monitoring
+  labels: {app.kubernetes.io/name: prometheus}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app.kubernetes.io/name: prometheus}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: prometheus}
+    spec:
+      serviceAccountName: prometheus
+      securityContext: {runAsNonRoot: true, runAsUser: 65534, fsGroup: 65534}
+      containers:
+        - name: prometheus
+          image: prom/prometheus:v3.15.0
+          imagePullPolicy: IfNotPresent
+          args:
+            - --config.file=/etc/prometheus/prometheus.yml
+            - --storage.tsdb.path=/prometheus
+            - --storage.tsdb.retention.time=2d
+            - --web.enable-lifecycle
+          ports: [{name: web, containerPort: 9090}]
+          readinessProbe:
+            httpGet: {path: /-/ready, port: web}
+          resources:
+            requests: {cpu: 50m, memory: 128Mi}
+            limits: {cpu: 500m, memory: 512Mi}
+          volumeMounts:
+            - {name: config, mountPath: /etc/prometheus}
+            - {name: data, mountPath: /prometheus}
+      volumes:
+        - name: config
+          configMap:
+            name: prometheus-config
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  namespace: monitoring
+spec:
+  type: NodePort
+  selector: {app.kubernetes.io/name: prometheus}
+  ports:
+    - {name: web, port: 9090, targetPort: web, nodePort: 30090}

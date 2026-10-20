@@ -1,0 +1,49 @@
+flavors:
+  python_function:
+    code: code
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.skops
+    predict_fn: predict_proba
+    python_version: 3.12.3
+  sklearn:
+    code: code
+    pickled_model: model.skops
+    serialization_format: skops
+    sklearn_version: 1.9.1
+    skops_trusted_types:
+    - heartrisk.features.ClinicalFeatureEngineer
+    - heartrisk.features.select_numeric
+    - heartrisk.features.select_binary
+    - heartrisk.features.select_categorical
+    - heartrisk.features.to_float
+    - numpy.dtype
+    - sklearn.tree._tree.Tree
+is_signature_from_type_hint: false
+mlflow_version: 3.17.1
+model_id: null
+model_size_bytes: 341057
+model_uuid: bba4627016324271bae092693291a226
+prompts: null
+saved_input_example_info:
+  artifact_path: input_example.json
+  pandas_orient: split
+  serving_input_path: serving_input_example.json
+  type: dataframe
+signature:
+  inputs: '[{"type": "double", "name": "age", "required": true}, {"type": "double",
+    "name": "trestbps", "required": true}, {"type": "double", "name": "chol", "required":
+    true}, {"type": "double", "name": "thalach", "required": true}, {"type": "double",
+    "name": "oldpeak", "required": true}, {"type": "double", "name": "ca", "required":
+    true}, {"type": "double", "name": "sex", "required": true}, {"type": "double",
+    "name": "fbs", "required": true}, {"type": "double", "name": "exang", "required":
+    true}, {"type": "double", "name": "cp", "required": true}, {"type": "double",
+    "name": "restecg", "required": true}, {"type": "double", "name": "slope", "required":
+    true}, {"type": "double", "name": "thal", "required": true}]'
+  outputs: '[{"type": "tensor", "tensor-spec": {"dtype": "float64", "shape": [-1,
+    2]}}]'
+  params: null
+type_hint_from_example: false
+utc_time_created: '2026-10-20 06:45:31.936200'

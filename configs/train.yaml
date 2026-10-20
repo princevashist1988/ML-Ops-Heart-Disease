@@ -1,0 +1,52 @@
+# Training configuration - every value here is logged to MLflow with the run.
+seed: 42
+test_size: 0.20            # stratified hold-out, never used for model selection
+cv:
+  n_splits: 5
+  n_repeats: 3             # repeated CV: 303 rows is small, so average out split noise
+primary_metric: roc_auc    # ranks candidates; threshold-free, robust to the mild imbalance
+
+selection:
+  # Parsimony rule: if an interpretable model is within `tolerance` of the best
+  # CV ROC-AUC, prefer it (clinicians can audit its coefficients).
+  tolerance: 0.01
+  prefer: [logistic_regression]
+
+threshold:
+  strategy: f_beta         # chosen on out-of-fold predictions of the training set
+  beta: 2.0                # recall weighted 4x precision: a missed case is the costly error
+  min_precision: 0.60
+
+quality_gate:
+  min_test_roc_auc: 0.80   # CI fails if the champion falls below this on the hold-out
+  min_test_recall: 0.75
+
+models:
+  logistic_regression:
+    params:
+      solver: saga           # supports the full elastic-net path
+      max_iter: 5000
+    grid:
+      features__enabled: [true, false]
+      clf__C: [0.03, 0.1, 0.3, 1.0]
+      clf__l1_ratio: [0.0, 0.5, 1.0]   # 0 = ridge (L2), 1 = lasso (L1), 0.5 = elastic-net
+      clf__class_weight: [null, balanced]
+
+  random_forest:
+    params:
+      n_estimators: 300
+      n_jobs: 1
+    grid:
+      features__enabled: [true, false]
+      clf__max_depth: [null, 4, 8]
+      clf__min_samples_leaf: [1, 4]
+      clf__max_features: [sqrt, 0.5]
+
+  gradient_boosting:
+    params: {}
+    grid:
+      features__enabled: [true, false]
+      clf__n_estimators: [100, 250]
+      clf__learning_rate: [0.03, 0.1]
+      clf__max_depth: [2, 3]
+      clf__subsample: [0.8]
