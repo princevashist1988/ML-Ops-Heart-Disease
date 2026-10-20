@@ -48,7 +48,7 @@ docker-run:      ## run the image on :8000
 	docker run -d --rm --name heart-risk-api -p 8000:8000 $(IMAGE)
 
 smoke:           ## smoke test a running API (BASE_URL=...)
-	scripts/smoke_test.sh $(BASE_URL)
+	bash scripts/smoke_test.sh $(BASE_URL)
 
 compose-up:      ## API + Prometheus + Grafana
 	docker compose up -d --build
@@ -72,7 +72,7 @@ traffic:         ## synthetic traffic for dashboards (BASE_URL=...)
 	$(PY) scripts/generate_traffic.py --url $(BASE_URL) --minutes 3
 
 ci:              ## run the CI stages locally: lint -> test -> train -> docker -> smoke
-	scripts/ci_local.sh
+	bash scripts/ci_local.sh
 
 all: data eda train test   ## full ML pipeline from a clean checkout
 

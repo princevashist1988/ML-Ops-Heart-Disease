@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Local replica of .github/workflows/ci-cd.yml: lint -> test -> train -> docker -> smoke.
 # Stops at the first failing stage with a non-zero exit code (same contract as CI).
-#   scripts/ci_local.sh                      # full run
-#   SKIP_DOCKER=1 scripts/ci_local.sh        # Python stages only
-#   BASE_IMAGE=<mirror>/python:3.12-slim scripts/ci_local.sh
+#   bash scripts/ci_local.sh                      # full run
+#   SKIP_DOCKER=1 bash scripts/ci_local.sh        # Python stages only
+#   BASE_IMAGE=<mirror>/python:3.12-slim bash scripts/ci_local.sh
 set -euo pipefail
 cd "$(dirname "$0")/.."
 export MLFLOW_DISABLE_AGENT_HINT=1 PYTHONWARNINGS=ignore
@@ -41,6 +41,6 @@ stage "6/6 run container + smoke test"
 docker rm -f heart-risk-ci >/dev/null 2>&1 || true
 docker run -d --name heart-risk-ci -p 18000:8000 "$IMAGE" >/dev/null
 trap 'docker logs heart-risk-ci > logs/container.log 2>&1; docker rm -f heart-risk-ci >/dev/null 2>&1' EXIT
-scripts/smoke_test.sh http://localhost:18000 | tee logs/container_smoke_test.log
+bash scripts/smoke_test.sh http://localhost:18000 | tee logs/container_smoke_test.log
 
 printf '\nCI pipeline passed.\n'

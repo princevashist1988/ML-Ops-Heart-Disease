@@ -52,7 +52,7 @@ deploy/helm/heart-risk-api/   the same deployment as a parameterised Helm chart
 deploy/monitoring/            Prometheus config + alert rules, Grafana provisioning + dashboard, K8s stack
 docker-compose.yml            API + Prometheus + Grafana locally
 Dockerfile                    multi-stage, non-root, healthcheck, 1 worker/container
-docs/                         architecture diagram, report (docx/pdf), video, runbook
+docs/                         architecture diagram, final report (docx), pipeline walkthrough video
 models/                       packaged champion: model.joblib, model_card.json, mlflow_model/
 notebooks/                    01 EDA · 02 training & tracking · 03 inference (executed)
 reports/                      metrics.json, model_comparison.csv, mlflow_runs.csv, figures/
@@ -128,7 +128,7 @@ omitted (imputed). Unknown fields are rejected (422).
 ```bash
 docker build -t heart-risk-api:1.0.0 .
 docker run -d --name heart-risk-api -p 8000:8000 heart-risk-api:1.0.0
-scripts/smoke_test.sh http://localhost:8000        # 7 checks, non-zero exit on failure
+bash scripts/smoke_test.sh http://localhost:8000   # 7 checks, non-zero exit on failure
 ```
 Multi-stage build, non-root UID 10001, `HEALTHCHECK` on `/ready`, `BASE_IMAGE` build-arg for mirrored/air-gapped
 registries. `docker compose up -d --build` adds Prometheus (`:9090`) and Grafana (`:3000`, admin/admin).
@@ -142,7 +142,7 @@ minikube image load heart-risk-api:1.0.0           # or: eval $(minikube docker-
 kubectl apply -k deploy/k8s && kubectl -n heart-risk rollout status deploy/heart-risk-api
 minikube tunnel                                     # separate terminal: gives the LoadBalancer an IP
 echo "$(minikube ip) heart-risk.local" | sudo tee -a /etc/hosts
-scripts/smoke_test.sh http://heart-risk.local       # via Ingress
+bash scripts/smoke_test.sh http://heart-risk.local  # via Ingress
 ```
 **Docker Desktop**: enable Kubernetes, build the image locally, `kubectl apply -k deploy/k8s`; the
 LoadBalancer is served on `http://localhost:8000`.
@@ -169,7 +169,7 @@ limits, HPA (2-5 pods on CPU), PodDisruptionBudget, a restricted security contex
 `docker` (build, run, smoke test, save image) → `deploy-kind` (kind cluster, `kubectl apply -k`, rollout,
 smoke test, Helm lint + install). Each job uploads its logs/reports as artifacts and writes a Markdown
 summary; any failing command fails the pipeline. On `main`, the image is pushed to GHCR.
-Run the same stages locally with `scripts/ci_local.sh`.
+Run the same stages locally with `bash scripts/ci_local.sh`.
 
 ## 9. Results summary
 
